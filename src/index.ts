@@ -38,7 +38,6 @@ const sessionObj = {
 };
 
 const clientSecret: string = await config.clientSecret;
-const komqWorldApiToken: string = await config.komqWorldApiToken;
 
 async function main() {
   const app = express();
@@ -57,19 +56,20 @@ async function main() {
 
   app.get("/", async (req, res) => {
     const query = req.query;
-    const session = req.session;
+    const sessionData = req.session;
+
     const d = query.d as string;
     const u = query.u as string;
     const n = query.n as string;
-    const c = query.c as string;
+    const c = query.code as string;
 
-    if (session && session.c) {
+    if (sessionData && sessionData.c) {
       try {
         await authorization(
-          decrypt(session.d!!),
-          decrypt(session.u!!),
-          decrypt(session.n!!),
-          session.c
+          decrypt(sessionData.d!!),
+          decrypt(sessionData.u!!),
+          decrypt(sessionData.n!!),
+          sessionData.c
         );
 
         req.session.d = "";
@@ -105,6 +105,7 @@ async function authorization(d: string, u: string, n: string, c: string) {
   const mc = await xbox.getMinecraft();
   const profile = mc.profile;
   const token = mc.mcToken;
+  const komqWorldApiToken: string = await config.komqWorldApiToken;
 
   const createdAt = await axios
     .get("https://api.minecraftservices.com/minecraft/profile/namechange", {
@@ -120,7 +121,7 @@ async function authorization(d: string, u: string, n: string, c: string) {
 
   if (profile?.name === n && profile.id === u) {
     try {
-      await axios.post(
+      const req = await axios.post(
         config.API,
         {
           discord_id: d,
@@ -130,6 +131,8 @@ async function authorization(d: string, u: string, n: string, c: string) {
         },
         { headers: { Authorization: `Bearer ${komqWorldApiToken}` } }
       );
+
+      console.log(req.data);
     } catch (e) {
       if (e instanceof AxiosError && e.response?.status === 502) {
         console.error("ERROR: API SERVER IS DOWN!!!!!!!!!");
